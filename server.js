@@ -1,24 +1,82 @@
-let express = require("express");
+let express = require('express');
 let app = express();
-let port = 3000;
+let port = process.env.port || 3000;
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "mongodb+srv://224019008:admin@cluster0.94zmsku.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-app.use(express.static(__dirname + "/"));
-app.get("/", (req, res) => {
-	res.render("index.html");
+const client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    }
 });
 
-app.get("/addTwoNumbers", (req, res) => {
-	// 1 gram the values from url parameter
-	let value1 = req.query.num1;
-	let value2 = req.query.num2;
+async function run() {
+    try {
+      await client.connect();
+      await client.db("admin").command({ ping: 1 });
+      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    } finally {
+      await client.close();
+    }
+}
 
-	// 2 calculation
-	let result = parseInt(value1) + parseInt(value2);
+app.use(express.static(__dirname + '/'));
+app.use(express.json());
+app.use(express.urlencoded({extended: false}));
 
-	// 3 returen the response, the response has to be in an object
-	let response = { data: result, statusCode: 200, message: "success" };
-	res.json(response);
+app.get('/', (req, res) => {
+    res.render('index.html');
 });
+
+app.post('/api/cat', async (req, res) => {
+    let cat = req.body;
+    let result = await postCat(cat);
+    client.close();
+    res.json({statusCode: 201, message: 'success', data: result});
+});
+
+async function postCat(cat) {
+    await client.connect();
+    let collection = await client.db().collection('cat');
+    return collection.insertOne(cat);
+}
+
+app.get('/api/cats', async (req, res) => {
+    let result = await getAllCats();
+    client.close();
+    res.json({statusCode: 201, message: 'success', data: result});
+});
+
+async function getAllCats() {
+    await client.connect();
+    let collection = await client.db().collection('cat');
+    return collection.find().toArray();
+}
+
 app.listen(port, () => {
-	console.log("server started!");
+    console.log('server started');
+     //run().catch(console.dir);;
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
